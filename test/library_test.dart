@@ -2,28 +2,13 @@
 // is governed by a BSD-style license that can be found in the LICENSE file.
 
 import 'dart:io';
-import 'package:blackhc_metamath/src/ast.dart';
+import 'package:blackhc_metamath/src/library.dart';
 import 'package:blackhc_metamath/src/parser.dart';
-import 'package:built_collection/built_collection.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('First Test', () {
-    final parser = new Parser(new TokenExtractor(r'$( TODO $)'));
-    expect(parser.parseGlobalScope(), new ScopeBuilder().build());
-  });
-  test('set.mm test', () {
-    final parser = new Parser(new TokenExtractor(
-        new File('/home/blackhc/metamath/set.mm').readAsStringSync()));
-    parser.parseGlobalScope();
-  });
   test('Coverage test', () {
-    expect(
-        new Parser(new TokenExtractor(r'$( demo0.mm  1-Jan-04 $)'))
-            .parseGlobalScope(),
-        isNotNull);
-
-    new Parser(new TokenExtractor(r'''$( demo0.mm  1-Jan-04 $)
+    final scope = new Parser(new TokenExtractor(r'''$( demo0.mm  1-Jan-04 $)
 
 $(
                       PUBLIC DOMAIN DEDICATION
@@ -74,5 +59,16 @@ $( Prove a theorem $)
        tt weq tt tze tpl tt weq tt tt weq wim tt a2
        tt tze tpl tt tt a1 mp mp
      $.''')).parseGlobalScope();
+
+    final library = new Library.fromScope(scope);
+    //print(library);
   });
+  test('set.mm test', () {
+    final parser = new Parser(new TokenExtractor(
+        new File('/home/blackhc/metamath/set.mm').readAsStringSync()));
+    final scope = parser.parseGlobalScope();
+    print('set.mm parsed');
+    final library = new Library.fromScope(scope);
+    expect(library, isNotNull);
+  }, skip: true);
 }

@@ -1,0 +1,22 @@
+name: blackhc_metamath
+description: A simple implementation of MetaMath in Dart.
+version: 0.0.1
+author: Andreas Kirsch <blackhc@gmail.com>
+homepage: www.blackhc.net
+
+environment:
+  sdk: '>=1.0.0 <2.0.0'
+
+dependencies:
+  meta:
+  built_collection:
+  built_value:
+  source_span:
+#  lib_name: any
+
+dev_dependencies:
+  build:
+  build_runner:
+  built_value_generator:
+  source_gen:
+  test:
