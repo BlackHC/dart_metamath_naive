@@ -65,6 +65,7 @@ class ConstantDeclBuilder
 
   @override
   void replace(ConstantDecl other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -144,6 +145,7 @@ class VariableDeclBuilder
 
   @override
   void replace(VariableDecl other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -224,6 +226,7 @@ class DisjointRestrictionBuilder
 
   @override
   void replace(DisjointRestriction other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -326,6 +329,7 @@ class FloatingHypothesisBuilder
 
   @override
   void replace(FloatingHypothesis other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -430,6 +434,7 @@ class EssentialHypothesisBuilder
 
   @override
   void replace(EssentialHypothesis other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -534,6 +539,7 @@ class AxiomaticAssertionBuilder
 
   @override
   void replace(AxiomaticAssertion other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -649,6 +655,7 @@ class ProvableAssertionBuilder
 
   @override
   void replace(ProvableAssertion other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -733,6 +740,7 @@ class VerboseProofBuilder
 
   @override
   void replace(VerboseProof other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -822,6 +830,7 @@ class CompressedProofBuilder
 
   @override
   void replace(CompressedProof other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -902,6 +911,7 @@ class ScopeBuilder implements Builder<Scope, ScopeBuilder> {
 
   @override
   void replace(Scope other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -979,6 +989,7 @@ class IncludeBuilder implements Builder<Include, IncludeBuilder> {
 
   @override
   void replace(Include other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 

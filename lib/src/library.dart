@@ -9,7 +9,7 @@ part 'library.g.dart';
 abstract class ScopeFrame implements Built<ScopeFrame, ScopeFrameBuilder> {
   BuiltSet<String> get constants;
   BuiltSet<String> get variables;
-  BuiltMap<String, BuiltSet<String>> get disjointVariables;
+  BuiltSetMultimap<String, String> get disjointVariables;
   BuiltList<FramedHypothesis> get hypotheses;
   BuiltMap<String, FramedHypothesis> get floatingHypothesesByVariable;
 
@@ -30,7 +30,6 @@ abstract class FramedHypothesis
 abstract class FramedAssertion
     implements Built<FramedAssertion, FramedAssertionBuilder> {
   ScopeFrame get frame;
-  ScopeFrame get extendedFrame;
   Assertion get assertion;
 
   FramedAssertion._();
@@ -80,13 +79,8 @@ abstract class Library implements Built<Library, LibraryBuilder> {
               if (variable == otherVariable) {
                 continue;
               }
-              // BuiltCollection SNAFU?
-              // How do I update the inner BuiltSet as SetBuilder?
-              scopeFrame = scopeFrame.rebuild((b) =>
-                  b.disjointVariables[variable] =
-                      (scopeFrame.disjointVariables[variable] ??
-                              new BuiltSet<String>())
-                          .rebuild((b) => b.add(otherVariable)));
+              scopeFrame = scopeFrame.rebuild(
+                  (b) => b.disjointVariables.add(variable, otherVariable));
             }
           }
         } else if (statement is Hypothesis) {
@@ -157,27 +151,8 @@ abstract class Library implements Built<Library, LibraryBuilder> {
             throw new StateError('${statement.constant} is not a constant!');
           }
 
-          final variablesBuilder = new SetBuilder<String>();
-          for (final symbol in statement.symbols) {
-            if (scopeFrame.variables.contains(symbol)) {
-              variablesBuilder.add(symbol);
-            } else if (!scopeFrame.constants.contains(symbol)) {
-              throw new StateError('Unknown symbol ${statement.constant}!');
-            }
-          }
-
-          for (final framedHypothesis in scopeFrame.hypotheses) {
-            final hypothesis = framedHypothesis.hypothesis;
-            if (hypothesis is EssentialHypothesis) {
-              for (final symbol in hypothesis.symbols) {
-                if (scopeFrame.variables.contains(symbol)) {
-                  variablesBuilder.add(symbol);
-                }
-              }
-            }
-          }
-
-          final variables = variablesBuilder.build();
+          BuiltSet<String> statementVariables =
+              getAssertionVariables(statement, scopeFrame);
 
           final mandatoryHypothesesBuilder =
               new ListBuilder<FramedHypothesis>();
@@ -186,26 +161,26 @@ abstract class Library implements Built<Library, LibraryBuilder> {
             if (hypothesis is EssentialHypothesis) {
               mandatoryHypothesesBuilder.add(framedHypothesis);
             } else if (hypothesis is FloatingHypothesis) {
-              if (variables.contains(hypothesis.variable)) {
+              if (statementVariables.contains(hypothesis.variable)) {
                 mandatoryHypothesesBuilder.add(framedHypothesis);
               }
             }
           }
 
-          // TODO: more verifications
+          // TODO: more verifications.. what kind of verifications?
           final frameBuilder = new ScopeFrameBuilder();
-          frameBuilder.variables = variablesBuilder;
+          frameBuilder.variables = statementVariables.toBuilder();
           frameBuilder.constants = scopeFrame.constants.toBuilder();
 
           final disjointVariableBuilder =
-              new MapBuilder<String, BuiltSet<String>>();
+              new SetMultimapBuilder<String, String>();
           for (final disjointVariable in scopeFrame.disjointVariables.keys) {
-            if (!variables.contains(disjointVariable)) {
+            if (!statementVariables.contains(disjointVariable)) {
               continue;
             }
             final others = scopeFrame.disjointVariables[disjointVariable]
-                .toBuilder()..retainAll(variables);
-            disjointVariableBuilder[disjointVariable] = others.build();
+                .toBuilder()..retainAll(statementVariables);
+            disjointVariableBuilder.addValues(disjointVariable, others.build());
           }
           frameBuilder.disjointVariables = disjointVariableBuilder;
           frameBuilder.hypotheses = mandatoryHypothesesBuilder;
@@ -237,6 +212,32 @@ abstract class Library implements Built<Library, LibraryBuilder> {
     }
 
     return library;
+  }
+
+  static BuiltSet<String> getAssertionVariables(
+      Assertion statement, ScopeFrame scopeFrame) {
+    final statementVariablesBuilder = new SetBuilder<String>();
+    for (final symbol in statement.symbols) {
+      if (scopeFrame.variables.contains(symbol)) {
+        statementVariablesBuilder.add(symbol);
+      } else if (!scopeFrame.constants.contains(symbol)) {
+        throw new StateError('Unknown symbol ${statement.constant}!');
+      }
+    }
+
+    for (final framedHypothesis in scopeFrame.hypotheses) {
+      final hypothesis = framedHypothesis.hypothesis;
+      if (hypothesis is EssentialHypothesis) {
+        for (final symbol in hypothesis.symbols) {
+          if (scopeFrame.variables.contains(symbol)) {
+            statementVariablesBuilder.add(symbol);
+          }
+        }
+      }
+    }
+
+    final statementVariables = statementVariablesBuilder.build();
+    return statementVariables;
   }
 
   static void verifyProof(Library library, FramedAssertion framedProof) {
@@ -272,14 +273,19 @@ abstract class Library implements Built<Library, LibraryBuilder> {
           }
           continue;
         }
+        // Otherwise it has to be an assertion!
         final framedAssertion = library.assertionsByLabel[label];
+        // TODO: error message?
         assert(framedAssertion != null);
 
-        final unifications = <String, BuiltList<String>>{};
-        final framedHypotheses = framedAssertion.frame.hypotheses.reversed.toList();
+        final unifications = <String, Assertion>{};
+        final framedHypotheses =
+            framedAssertion.frame.hypotheses.reversed.toList();
         final numHypotheses = framedAssertion.frame.hypotheses.length;
-        final assertions =
-            stack.sublist(stack.length - numHypotheses, stack.length).reversed.toList();
+        final assertions = stack
+            .sublist(stack.length - numHypotheses, stack.length)
+            .reversed
+            .toList();
         while (assertions.isNotEmpty && framedHypotheses.isNotEmpty) {
           final framedHypothesis = framedHypotheses.removeLast();
           final hypothesis = framedHypothesis.hypothesis;
@@ -288,20 +294,20 @@ abstract class Library implements Built<Library, LibraryBuilder> {
           // Try to unify the two.
           if (hypothesis is FloatingHypothesis) {
             if (unifications.containsKey(hypothesis.variable)) {
-              throw new StateError('Duplicate unification for ${hypothesis.variable} attempted!');
+              throw new StateError(
+                  'Duplicate unification for ${hypothesis.variable} attempted!');
             }
             if (assertion.constant != hypothesis.constant) {
               throw new StateError('Cannot unify $assertion and $hypothesis!');
             }
-            // TODO: check disjoints!
-            unifications[hypothesis.variable] = assertion.symbols;
+            unifications[hypothesis.variable] = assertion;
           } else if (hypothesis is EssentialHypothesis) {
             if (assertion.constant != hypothesis.constant) {
               throw new StateError('Cannot unify $assertion and $hypothesis!');
             }
-            // TODO: check disjoints!
             // Verify unification
-            final unifiedHypothesis = new BuiltList<String>(hypothesis.symbols.expand((symbol) {
+            final unifiedHypothesis =
+                new BuiltList<String>(hypothesis.symbols.expand((symbol) {
               if (framedAssertion.frame.constants.contains(symbol)) {
                 return [symbol];
               }
@@ -309,19 +315,54 @@ abstract class Library implements Built<Library, LibraryBuilder> {
               if (substitution == null) {
                 throw new StateError('No substitution for $symbol defined!');
               }
-              return substitution;
+              return substitution.symbols;
             }));
             if (unifiedHypothesis != assertion.symbols) {
-              throw new StateError('Cannot unify $assertion and $hypothesis. Got $unifiedHypothesis!');
+              throw new StateError(
+                  'Cannot unify $assertion and $hypothesis. Got $unifiedHypothesis!');
             }
           }
         }
-        assert (assertions.isEmpty && framedHypotheses.isEmpty);
+        assert(assertions.isEmpty && framedHypotheses.isEmpty);
         // Pop the assertions.
         stack.removeRange(stack.length - numHypotheses, stack.length);
+        // Verify disjoint variable conditions
+        // Two conditions: if A and B are disjoint, then all the variables in
+        // their substitutions [A], [B] need to be disjoint as well, and there
+        // must be no common variables.
+        // TODO: this is n**2 instead of n**2.
+        for (final variable in unifications.keys) {
+          print(framedProof.frame);
+          final substitutionVariables = getAssertionVariables(
+              unifications[variable], framedProof.frame);
+          for (final other
+              in framedProof.frame.disjointVariables[variable]) {
+            assert(variable != other);
+            if (!unifications.keys.contains(other)) {
+              continue;
+            }
+            // TODO: this is wrong. I need the assertion's frame!
+            final otherSubstitutionVariables = getAssertionVariables(
+                unifications[other], framedProof.frame);
+            if (otherSubstitutionVariables
+                .intersection(substitutionVariables)
+                .isNotEmpty) {
+              throw new StateError(
+                  'Disjoint $variable and $other have common variables under '
+                  'unification: ${unifications[variable]} <> ${unifications[other]}!');
+            }
+            if (framedProof.frame.disjointVariables[other]
+                .containsAll(substitutionVariables)) {
+              throw new StateError('For disjoint $variable and $other during '
+                  '${unifications[variable]} <> ${unifications[other]}, ${other}'
+                  ' is not disjoint with all ${substitutionVariables}!');
+            }
+          }
+        }
         // Now build the final unification.
         // Copied from above.
-        final unifiedAssertion = new BuiltList<String>(framedAssertion.assertion.symbols.expand((symbol) {
+        final unifiedAssertion = new BuiltList<String>(
+            framedAssertion.assertion.symbols.expand((symbol) {
           if (framedAssertion.frame.constants.contains(symbol)) {
             return [symbol];
           }
@@ -329,7 +370,7 @@ abstract class Library implements Built<Library, LibraryBuilder> {
           if (substitution == null) {
             throw new StateError('No substitution for $symbol defined!');
           }
-          return substitution;
+          return substitution.symbols;
         }));
         stack.add(new AxiomaticAssertion((b) {
           b.label = '${i++}';
@@ -337,17 +378,21 @@ abstract class Library implements Built<Library, LibraryBuilder> {
           b.symbols = unifiedAssertion.toBuilder();
         }));
         print('------------------');
-        unifications.forEach((s, l) => print('$s -> ${l.join(' ')}'));
-        print(framedAssertion.assertion.constant + ' ' + framedAssertion.assertion.symbols.join(' '));
+        unifications.forEach((s, l) => print('$s -> ${l.symbols.join(' ')}'));
+        print(framedAssertion.assertion.constant +
+            ' ' +
+            framedAssertion.assertion.symbols.join(' '));
         print(stack.last.constant + ' ' + stack.last.symbols.join(' '));
         print('------------------');
       }
       // Finally, the stack should match the proof's symbols.
       if (stack.length != 1) {
-        throw new StateError('Stack should only contain 1 assertion! Contains: $stack!');
+        throw new StateError(
+            'Stack should only contain 1 assertion! Contains: $stack!');
       }
       final result = stack.first;
-      if (result.constant != assertion.constant || result.symbols != assertion.symbols) {
+      if (result.constant != assertion.constant ||
+          result.symbols != assertion.symbols) {
         throw new StateError('Failed to proof $assertion with $result!');
       }
     } else if (assertion.proof is CompressedProof) {

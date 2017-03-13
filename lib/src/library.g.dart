@@ -13,7 +13,7 @@ class _$ScopeFrame extends ScopeFrame {
   @override
   final BuiltSet<String> variables;
   @override
-  final BuiltMap<String, BuiltSet<String>> disjointVariables;
+  final BuiltSetMultimap<String, String> disjointVariables;
   @override
   final BuiltList<FramedHypothesis> hypotheses;
   @override
@@ -90,11 +90,10 @@ class ScopeFrameBuilder implements Builder<ScopeFrame, ScopeFrameBuilder> {
       _$this._variables ??= new SetBuilder<String>();
   set variables(SetBuilder<String> variables) => _$this._variables = variables;
 
-  MapBuilder<String, BuiltSet<String>> _disjointVariables;
-  MapBuilder<String, BuiltSet<String>> get disjointVariables =>
-      _$this._disjointVariables ??= new MapBuilder<String, BuiltSet<String>>();
-  set disjointVariables(
-          MapBuilder<String, BuiltSet<String>> disjointVariables) =>
+  SetMultimapBuilder<String, String> _disjointVariables;
+  SetMultimapBuilder<String, String> get disjointVariables =>
+      _$this._disjointVariables ??= new SetMultimapBuilder<String, String>();
+  set disjointVariables(SetMultimapBuilder<String, String> disjointVariables) =>
       _$this._disjointVariables = disjointVariables;
 
   ListBuilder<FramedHypothesis> _hypotheses;
@@ -128,6 +127,7 @@ class ScopeFrameBuilder implements Builder<ScopeFrame, ScopeFrameBuilder> {
 
   @override
   void replace(ScopeFrame other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -223,6 +223,7 @@ class FramedHypothesisBuilder
 
   @override
   void replace(FramedHypothesis other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -249,17 +250,13 @@ class _$FramedAssertion extends FramedAssertion {
   @override
   final ScopeFrame frame;
   @override
-  final ScopeFrame extendedFrame;
-  @override
   final Assertion assertion;
 
   factory _$FramedAssertion([updates(FramedAssertionBuilder b)]) =>
       (new FramedAssertionBuilder()..update(updates)).build();
 
-  _$FramedAssertion._({this.frame, this.extendedFrame, this.assertion})
-      : super._() {
+  _$FramedAssertion._({this.frame, this.assertion}) : super._() {
     if (frame == null) throw new ArgumentError.notNull('frame');
-    if (extendedFrame == null) throw new ArgumentError.notNull('extendedFrame');
     if (assertion == null) throw new ArgumentError.notNull('assertion');
   }
 
@@ -274,22 +271,18 @@ class _$FramedAssertion extends FramedAssertion {
   @override
   bool operator ==(dynamic other) {
     if (other is! FramedAssertion) return false;
-    return frame == other.frame &&
-        extendedFrame == other.extendedFrame &&
-        assertion == other.assertion;
+    return frame == other.frame && assertion == other.assertion;
   }
 
   @override
   int get hashCode {
-    return $jf($jc($jc($jc(0, frame.hashCode), extendedFrame.hashCode),
-        assertion.hashCode));
+    return $jf($jc($jc(0, frame.hashCode), assertion.hashCode));
   }
 
   @override
   String toString() {
     return 'FramedAssertion {'
         'frame=${frame.toString()},\n'
-        'extendedFrame=${extendedFrame.toString()},\n'
         'assertion=${assertion.toString()},\n'
         '}';
   }
@@ -303,12 +296,6 @@ class FramedAssertionBuilder
   ScopeFrameBuilder get frame => _$this._frame ??= new ScopeFrameBuilder();
   set frame(ScopeFrameBuilder frame) => _$this._frame = frame;
 
-  ScopeFrameBuilder _extendedFrame;
-  ScopeFrameBuilder get extendedFrame =>
-      _$this._extendedFrame ??= new ScopeFrameBuilder();
-  set extendedFrame(ScopeFrameBuilder extendedFrame) =>
-      _$this._extendedFrame = extendedFrame;
-
   Assertion _assertion;
   Assertion get assertion => _$this._assertion;
   set assertion(Assertion assertion) => _$this._assertion = assertion;
@@ -318,7 +305,6 @@ class FramedAssertionBuilder
   FramedAssertionBuilder get _$this {
     if (_$v != null) {
       _frame = _$v.frame?.toBuilder();
-      _extendedFrame = _$v.extendedFrame?.toBuilder();
       _assertion = _$v.assertion;
       _$v = null;
     }
@@ -327,6 +313,7 @@ class FramedAssertionBuilder
 
   @override
   void replace(FramedAssertion other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
@@ -338,10 +325,7 @@ class FramedAssertionBuilder
   @override
   FramedAssertion build() {
     final result = _$v ??
-        new _$FramedAssertion._(
-            frame: frame?.build(),
-            extendedFrame: extendedFrame?.build(),
-            assertion: assertion);
+        new _$FramedAssertion._(frame: frame?.build(), assertion: assertion);
     replace(result);
     return result;
   }
@@ -439,6 +423,7 @@ class LibraryBuilder implements Builder<Library, LibraryBuilder> {
 
   @override
   void replace(Library other) {
+    if (other == null) throw new ArgumentError.notNull('other');
     _$v = other;
   }
 
